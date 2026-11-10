@@ -1,0 +1,5 @@
+#!/usr/bin/env bash
+# Prints the current public URL of the Meeting Scheduler quick tunnel.
+# (The free trycloudflare.com URL changes every time the tunnel restarts.)
+url=$(journalctl -u meeting-scheduler-tunnel --no-pager -o cat 2>/dev/null | grep -oE 'https://[a-z0-9-]+\.trycloudflare\.com' | tail -1)
+if [ -n "$url" ]; then echo "$url"; else echo "No tunnel URL yet. Check: sudo systemctl status meeting-scheduler-tunnel" >&2; exit 1; fi

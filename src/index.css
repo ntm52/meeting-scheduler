@@ -1,0 +1,30 @@
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap');
+@import "tailwindcss";
+
+@theme {
+  --font-sans: "Inter", ui-sans-serif, system-ui, sans-serif;
+  --color-brand-50: #f1f8f1;
+  --color-brand-100: #dcefd9;
+  --color-brand-200: #c3e3bd;
+  --color-brand-300: #9fd096;
+  --color-brand-400: #6cb565;
+  --color-brand-500: #3f9450;
+  --color-brand-600: #2f7d4a;
+  --color-brand-700: #24643b;
+  --color-brand-800: #1d4f30;
+  --color-brand-900: #163b25;
+  --color-maybe-200: #f7e8a6;
+  --color-maybe-400: #e9c94a;
+  --color-wait: #d98a1c;
+  --color-ink: #1b2a20;
+  --color-paper: #f6f8f4;
+}
+
+html, body { background: var(--color-paper); color: var(--color-ink); }
+body { -webkit-tap-highlight-color: transparent; }
+:focus-visible { outline: 3px solid var(--color-brand-400); outline-offset: 2px; }
+.no-select { user-select: none; -webkit-user-select: none; }
+@keyframes pop { from { transform: scale(.6); opacity: 0 } to { transform: scale(1); opacity: 1 } }
+.animate-pop { animation: pop .35s cubic-bezier(.2,1.4,.4,1) both; }
+@keyframes slidein { from { transform: translateY(12px); opacity: 0 } to { transform: none; opacity: 1 } }
+.animate-in { animation: slidein .25s ease-out both; }
