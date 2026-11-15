@@ -101,7 +101,7 @@ export function Grid(props: GridProps) {
 
   const colHead = (d: string) => {
     const dt = parseISO(d)
-    return recurring ? { top: format(dt, 'EEE'), sub: 'weekly' } : { top: format(dt, 'EEE'), sub: format(dt, 'MMM d') }
+    return recurring ? { top: format(dt, 'EEE'), sub: '' } : { top: format(dt, 'EEE'), sub: format(dt, 'MMM d') }
   }
 
   const heatColor = (i: number) => {
@@ -114,7 +114,7 @@ export function Grid(props: GridProps) {
     if (a === 0) return `rgba(233, 201, 74, ${0.25 + 0.5 * m})`
     // green scale; full group = darkest
     const alpha = 0.08 + 0.92 * a * a
-    return `rgba(47, 125, 74, ${alpha})`
+    return `rgba(4, 176, 120, ${alpha})`
   }
 
   return (
@@ -157,7 +157,7 @@ export function Grid(props: GridProps) {
                 key={d}
                 title="Outside the meeting’s hours in this time zone"
                 className={cx('border-t border-x border-x-white/0', borderTop)}
-                style={{ height: ROW_H, background: 'repeating-linear-gradient(45deg,#f0f1ee 0 4px,#e6e8e3 4px 8px)' }}
+                style={{ height: ROW_H, background: 'repeating-linear-gradient(45deg,#eef2f7 0 4px,#e3e9f1 4px 8px)' }}
               />
             )
           }
@@ -179,7 +179,7 @@ export function Grid(props: GridProps) {
                   startDrag({ c0: c, r0: r, c1: c, r1: r, level })
                 }}
                 className={cx('border-t border-l border-r-0 border-l-white cursor-pointer transition-colors', borderTop,
-                  v === AVAILABLE && 'bg-brand-500',
+                  v === AVAILABLE && 'bg-go-500',
                   v === IF_NEEDED && 'bg-maybe-400',
                   !v && 'bg-white hover:bg-brand-50')}
                 style={{ height: ROW_H, touchAction: 'none' }}
@@ -208,15 +208,15 @@ export function GridLegend({ mode }: { mode: 'paint' | 'heat' }) {
   if (mode === 'paint')
     return (
       <div className="flex flex-wrap gap-4 text-xs text-ink/70">
-        <span className="flex items-center gap-1.5"><span className="size-3.5 rounded bg-brand-500" /> Available</span>
-        <span className="flex items-center gap-1.5"><span className="size-3.5 rounded bg-maybe-400" /> If needed (I’d rather not)</span>
+        <span className="flex items-center gap-1.5"><span className="size-3.5 rounded bg-go-500" /> Available</span>
+        <span className="flex items-center gap-1.5"><span className="size-3.5 rounded bg-maybe-400" /> If needed</span>
         <span className="flex items-center gap-1.5"><span className="size-3.5 rounded border border-ink/20 bg-white" /> Can’t</span>
       </div>
     )
   return (
     <div className="flex flex-wrap items-center gap-3 text-xs text-ink/70">
       <span>Fewer</span>
-      <span className="flex h-3.5 w-28 rounded overflow-hidden border border-ink/10" style={{ background: 'linear-gradient(90deg,#fff, rgba(47,125,74,.4), rgba(47,125,74,1))' }} />
+      <span className="flex h-3.5 w-28 rounded overflow-hidden border border-ink/10" style={{ background: 'linear-gradient(90deg,#fff, rgba(4,176,120,.4), rgba(4,176,120,1))' }} />
       <span>Everyone free</span>
       <span className="flex items-center gap-1.5 ml-2"><span className="size-3.5 rounded" style={{ background: 'rgba(233,201,74,.6)' }} /> Only “if needed”</span>
     </div>

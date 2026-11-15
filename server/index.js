@@ -144,21 +144,50 @@ app.get('/api/events/:id', (req, res) => {
   res.json({ event: out, isOrganizer: isOrg, suggestions: suggestTimes(ev, 3), attending: attendingCount(ev) })
 })
 
+function sendInvite(ev, p, link) {
+  const tz = p.tz || ev.tz
+  const body = ev.status === 'confirmed' && ev.confirmed
+    ? `${ev.organizer.name} invited you to ${ev.name}, set for ${formatRange(ev.confirmed.start, ev.confirmed.end, tz)}. Details: ${link}`
+    : `${ev.organizer.name} invited you to ${ev.name}. Add your availability: ${link} — Reply by ${new Date(ev.deadline).toLocaleString('en-US', { timeZone: tz, weekday: 'short', hour: 'numeric', minute: '2-digit' })}.`
+  notify({ to: p.contact, toName: p.name, eventId: ev.id, kind: 'invite', subject: `${ev.organizer.name} invited you to ${ev.name}`, body })
+  p.invitedAt = Date.now()
+}
+
+// send invites to everyone with a contact who hasn't been invited yet
 app.post('/api/events/:id/invite', (req, res) => {
   const ev = getEvent(req, res)
   if (!ev || !requireOrganizer(req, res, ev)) return
-  const link = req.body.link
   let sent = 0
   for (const p of ev.participants) {
-    if (p.isOrganizer || !p.contact) continue
-    notify({
-      to: p.contact, toName: p.name, eventId: ev.id, kind: 'invite',
-      subject: `${ev.organizer.name} invited you to ${ev.name}`,
-      body: `${ev.organizer.name} invited you to ${ev.name}. Connect your calendar so we can find a time: ${link} — Not in by ${new Date(ev.deadline).toLocaleString('en-US', { timeZone: p.tz || ev.tz, weekday: 'short', hour: 'numeric', minute: '2-digit' })}? We’ll schedule without you.`,
-    })
+    if (p.isOrganizer || !p.contact || p.invitedAt) continue
+    sendInvite(ev, p, req.body.link)
     sent++
   }
+  save()
   res.json({ sent })
+})
+
+// organizer adds one more person (works before or after the time is set) and invites them
+app.post('/api/events/:id/invitees', (req, res) => {
+  const ev = getEvent(req, res)
+  if (!ev || !requireOrganizer(req, res, ev)) return
+  const name = req.body.name?.trim()
+  const contact = req.body.contact?.trim() || ''
+  if (!name) return bad(res, 400, 'Enter a name')
+  if (!contact) return bad(res, 400, 'Enter a phone or email')
+  let p = ev.participants.find((x) => x.contact && x.contact.toLowerCase() === contact.toLowerCase())
+  if (!p) {
+    p = {
+      id: 'p-' + id(5), key: id(10), name, contact, tz: null,
+      isOrganizer: false, status: 'invited', method: null, availability: {}, flagged: false,
+      autoReminded: false, cantMakeIt: false, reminders: { h24: true, h1: true }, sentMeetingReminders: {},
+      respondedAt: null, updatedAt: null,
+    }
+    ev.participants.push(p)
+  }
+  sendInvite(ev, p, req.body.link)
+  save()
+  res.json({ ok: true })
 })
 
 // join as a respondent (matches an existing invitee by contact or name)

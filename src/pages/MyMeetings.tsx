@@ -40,7 +40,7 @@ export default function MyMeetings() {
     setErr('')
     try {
       const r = await api.post<{ demoCode: string; channel: string }>('/api/auth/start', { contact })
-      toast({ icon: r.channel === 'email' ? '✉️' : '💬', title: `Your code: ${r.demoCode}`, body: 'Demo: this is the message you’d receive.' })
+      toast({ title: `Your code: ${r.demoCode}` })
       setSent(true)
     } catch (e: any) { setErr(e.message) }
   }
@@ -62,7 +62,7 @@ export default function MyMeetings() {
       <h1 className="text-3xl font-extrabold">My meetings</h1>
       {!session ? (
         <Card className="space-y-4">
-          <p className="text-ink/65">Lost the link? Enter the email or phone you used and we’ll find every meeting you organized or answered.</p>
+          <p className="text-ink/65">Enter the email or phone you used.</p>
           {!sent ? (
             <>
               <Field label="Email or phone"><Input value={contact} onChange={(e) => setContact(e.target.value)} placeholder="you@school.edu" onKeyDown={(e) => e.key === 'Enter' && contact && start()} /></Field>
@@ -96,9 +96,9 @@ export default function MyMeetings() {
               <Pill tone={e.role === 'organizer' ? 'blue' : 'gray'}>{e.role === 'organizer' ? 'Organizer' : 'Respondent'}</Pill>
             </div>
             <div className="text-sm text-ink/60 mt-0.5">
-              {e.status === 'confirmed' && e.confirmed ? <>✅ {fmt(e.confirmed.start, tz, 'EEE, MMM d · h:mm a')}</>
-                : e.status === 'review' ? '✨ Time suggested, waiting on organizer'
-                : <>Collecting · deadline {relTime(e.deadline)}{e.role === 'respondent' && !e.responded && ' · you haven’t answered'}</>}
+              {e.status === 'confirmed' && e.confirmed ? <>Set for {fmt(e.confirmed.start, tz, 'EEE, MMM d · h:mm a')}</>
+                : e.status === 'review' ? 'Waiting on organizer'
+                : <>Due {relTime(e.deadline)}{e.role === 'respondent' && !e.responded && ' · not answered'}</>}
             </div>
           </div>
           <div className="flex gap-2 shrink-0">

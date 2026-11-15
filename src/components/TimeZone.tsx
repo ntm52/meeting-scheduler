@@ -40,18 +40,14 @@ export function TimeZonePopup({
 
   return (
     <Modal open={open} onClose={onClose} title="Which time zone are you in?">
-      <p className="text-sm text-ink/65 mb-4">
-        We’ll show every time in this zone and convert it for everyone else automatically.
-      </p>
       <div className="space-y-2">
-        <Row tz={auto} title="Detected automatically" sub={tzLabel(auto)} />
+        <Row tz={auto} title="Detected" sub={tzLabel(auto)} />
         {organizerTz && organizerTz !== auto && (
           <Row tz={organizerTz} title={`${organizerName || 'Organizer'}’s time zone`} sub={tzLabel(organizerTz)} />
         )}
       </div>
       <div className="mt-4">
-        <span className="block text-sm font-semibold mb-1.5">Somewhere else?</span>
-        <Input placeholder="Search a city or zone, e.g. Madrid, PST, Tokyo" value={q} onChange={(e) => setQ(e.target.value)} />
+        <Input placeholder="Search a city or zone" value={q} onChange={(e) => setQ(e.target.value)} />
         {list.length > 0 && (
           <div className="mt-2 max-h-56 overflow-auto rounded-xl border border-ink/10 divide-y divide-ink/5">
             {list.map((o) => (
@@ -61,11 +57,11 @@ export function TimeZonePopup({
             ))}
           </div>
         )}
-        {q && list.length === 0 && <p className="text-sm text-ink/55 mt-2">No match. Try a nearby big city.</p>}
+        {q && list.length === 0 && <p className="text-sm text-ink/55 mt-2">No match.</p>}
       </div>
       <div className="mt-5 flex items-center justify-between">
         <a href={TZ_MAP_URL} target="_blank" rel="noreferrer" className="text-sm font-semibold text-brand-700 hover:underline">
-          Show time zone map ↗
+          Time zone map
         </a>
         {current && <Button variant="ghost" size="sm" onClick={onClose}>Keep {tzAbbr(current)}</Button>}
       </div>
@@ -88,7 +84,6 @@ export function TzBar({
   const others = (members || []).filter((m) => m.tz)
   return (
     <div className="flex flex-wrap items-center gap-2 text-sm">
-      <span className="text-ink/65">Showing times in</span>
       <button
         onClick={onOpenPicker}
         className="rounded-lg border-2 border-ink/20 bg-white px-2.5 py-1 font-bold hover:border-brand-500 cursor-pointer"
@@ -98,8 +93,8 @@ export function TzBar({
       </button>
       {viewingOther && (
         <span className="text-ink/60">
-          ({who?.name || 'other zone'}’s view) ·{' '}
-          <button className="text-brand-700 font-semibold hover:underline cursor-pointer" onClick={() => onView?.(myTz, null)}>back to mine</button>
+          {who?.name && <>{who.name} · </>}
+          <button className="text-brand-700 font-semibold hover:underline cursor-pointer" onClick={() => onView?.(myTz, null)}>Back to mine</button>
         </span>
       )}
       {onView && others.length > 0 && (
@@ -112,7 +107,7 @@ export function TzBar({
           }}
           aria-label="View in a teammate's time zone"
         >
-          <option value="">Teammates’ time zones…</option>
+          <option value="">Others’ zones</option>
           {others.map((m) => (
             <option key={m.name} value={m.name}>
               {m.name} ({tzAbbr(m.tz!)})
@@ -120,9 +115,6 @@ export function TzBar({
           ))}
         </select>
       )}
-      <a href={TZ_MAP_URL} target="_blank" rel="noreferrer" className="text-brand-700 font-semibold hover:underline">
-        Map ↗
-      </a>
     </div>
   )
 }

@@ -16,6 +16,7 @@ export type Participant = {
   reminders: { h24: boolean; h1: boolean }
   respondedAt: number | null
   updatedAt: number | null
+  invitedAt?: number
 }
 
 export type MeetingEvent = {

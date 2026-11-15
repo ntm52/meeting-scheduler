@@ -5,7 +5,7 @@ import { useToast } from './ui'
 import { update } from '../lib/storage'
 
 // Floating "presenter" controls to fast-forward the scenario during a demo.
-// Toggle with the 🎬 button or Shift+D.
+// Toggle with the Demo button or Shift+D.
 export function DemoPanel() {
   const [open, setOpen] = useState(false)
   const loc = useLocation()
@@ -25,10 +25,10 @@ export function DemoPanel() {
   const run = async (action: string) => {
     try {
       const r = await api.post<{ message: string }>(`/api/demo/${eventId}/${action}`)
-      toast({ icon: '🎬', title: r.message })
+      toast({ title: r.message })
       window.dispatchEvent(new Event('ms:refresh'))
     } catch (e: any) {
-      toast({ icon: '⚠️', title: e.message })
+      toast({ title: e.message })
     }
   }
 
@@ -59,8 +59,8 @@ export function DemoPanel() {
           <p className="text-white/40 text-xs">Shift+D toggles this panel.</p>
         </div>
       )}
-      <button onClick={() => setOpen((o) => !o)} className="size-12 rounded-full bg-ink text-white text-xl shadow-lg hover:scale-105 transition cursor-pointer" aria-label="Demo controls" title="Demo controls (Shift+D)">
-        🎬
+      <button onClick={() => setOpen((o) => !o)} className="h-10 px-4 rounded-full bg-ink text-white text-sm font-semibold shadow-lg hover:scale-105 transition cursor-pointer" aria-label="Demo controls" title="Demo controls (Shift+D)">
+        Demo
       </button>
     </div>
   )

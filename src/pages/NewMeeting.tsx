@@ -2,7 +2,7 @@ import { useMemo, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { addDays, addMonths, endOfMonth, format, getDay, isBefore, startOfDay, startOfMonth } from 'date-fns'
 import { fromZonedTime } from 'date-fns-tz'
-import { Button, Card, Checkbox, Field, Input, RoleBadge, cx, useToast } from '../components/ui'
+import { Button, Card, Checkbox, Field, Input, cx, useToast } from '../components/ui'
 import { TimeZonePopup } from '../components/TimeZone'
 import { api } from '../lib/api'
 import { detectTz, minLabel, tzLabel } from '../lib/tz'
@@ -50,7 +50,6 @@ function MonthPicker({ selected, onToggle }: { selected: Set<string>; onToggle: 
           )
         })}
       </div>
-      <p className="text-xs text-ink/50 mt-2">Tap days to add them. Plan as far ahead as you like.</p>
     </div>
   )
 }
@@ -128,7 +127,7 @@ export default function NewMeeting() {
         s.me[res.event.id] = { id: res.organizer.id, key: res.organizer.key, name: orgName || 'Organizer' }
         s.tz[res.event.id] = tz
       })
-      toast({ icon: '🎉', title: 'Meeting created', body: 'Now share it with your group.' })
+      toast({ title: 'Meeting created' })
       nav(`/e/${res.event.id}/share?k=${res.manageKey}`)
     } catch (e: any) {
       setErr(e.message)
@@ -139,23 +138,20 @@ export default function NewMeeting() {
 
   return (
     <form onSubmit={submit} className="max-w-2xl mx-auto space-y-5">
-      <div>
-        <RoleBadge role="Organizer" name={orgName || undefined} />
-        <h1 className="text-3xl font-extrabold">New meeting</h1>
-      </div>
+      <h1 className="text-3xl font-extrabold">New meeting</h1>
 
       <Card className="space-y-4">
         <Field label="Meeting name">
           <Input autoFocus placeholder="CS 330 Group Meeting" value={name} onChange={(e) => setName(e.target.value)} />
         </Field>
         <Field label="Organization (optional)">
-          <Input placeholder="e.g. Group 1, Jazz Ensemble, ACM" value={org} onChange={(e) => setOrg(e.target.value)} />
+          <Input placeholder="Group 1, Jazz Ensemble, ACM" value={org} onChange={(e) => setOrg(e.target.value)} />
         </Field>
         <div className="grid sm:grid-cols-2 gap-4">
           <Field label="Your name">
             <Input placeholder="Adam" value={orgName} onChange={(e) => setOrgName(e.target.value)} />
           </Field>
-          <Field label="Your email or phone" hint="So we can tell you when people respond.">
+          <Field label="Your email or phone">
             <Input placeholder="you@school.edu" value={orgContact} onChange={(e) => setOrgContact(e.target.value)} />
           </Field>
         </div>
@@ -163,27 +159,28 @@ export default function NewMeeting() {
 
       <Card className="space-y-3">
         <h2 className="font-bold">Invite</h2>
-        <div className="flex flex-wrap gap-2">
-          {invitees.map((p, k) => (
-            <span key={k} className="inline-flex items-center gap-1.5 rounded-full border-2 border-brand-600 px-3 py-1 text-sm font-semibold text-brand-800">
-              {p.name}
-              {p.contact && <span className="font-normal text-ink/50">· {p.contact}</span>}
-              <button type="button" className="ml-1 text-ink/40 hover:text-ink cursor-pointer" onClick={() => setInvitees(invitees.filter((_, j) => j !== k))} aria-label={`Remove ${p.name}`}>×</button>
-            </span>
-          ))}
-          {!invitees.length && <span className="text-sm text-ink/45">No one yet. You can also just share the link later.</span>}
-        </div>
-        <div className="rounded-xl border-2 border-dashed border-ink/20 p-3 flex flex-col sm:flex-row gap-2">
+        {invitees.length > 0 && (
+          <div className="flex flex-wrap gap-2">
+            {invitees.map((p, k) => (
+              <span key={k} className="inline-flex items-center gap-1.5 rounded-full border-2 border-brand-600 px-3 py-1 text-sm font-semibold text-brand-800">
+                {p.name}
+                {p.contact && <span className="font-normal text-ink/50">· {p.contact}</span>}
+                <button type="button" className="ml-1 text-ink/40 hover:text-ink cursor-pointer" onClick={() => setInvitees(invitees.filter((_, j) => j !== k))} aria-label={`Remove ${p.name}`}>×</button>
+              </span>
+            ))}
+          </div>
+        )}
+        <div className="flex flex-col sm:flex-row gap-2">
           <Input placeholder="Name" value={invName} onChange={(e) => setInvName(e.target.value)} onKeyDown={(e) => e.key === 'Enter' && (e.preventDefault(), addInvitee())} />
           <Input placeholder="Phone or email (optional)" value={invContact} onChange={(e) => setInvContact(e.target.value)} onKeyDown={(e) => e.key === 'Enter' && (e.preventDefault(), addInvitee())} />
-          <Button type="button" variant="secondary" onClick={addInvitee}>+ Add</Button>
+          <Button type="button" variant="secondary" onClick={addInvitee}>Add</Button>
         </div>
-        <p className="text-xs text-ink/50">Phone numbers get a text, emails get an email. Anyone with the link can also join.</p>
+        <p className="text-xs text-ink/50">You’ll also get a link to share.</p>
       </Card>
 
       <Card className="space-y-4">
-        <h2 className="font-bold">When could it happen?</h2>
-        <Checkbox checked={recurring} onChange={setRecurring} label="Recurring meeting?" sub="For weekly club meetings, study groups and rehearsals." />
+        <h2 className="font-bold">Possible dates and time window</h2>
+        <Checkbox checked={recurring} onChange={setRecurring} label="Repeats" />
         {recurring ? (
           <div className="space-y-3 pl-8">
             <Field label="Frequency">
@@ -196,7 +193,7 @@ export default function NewMeeting() {
             </Field>
             {freq !== 'daily' && (
               <div>
-                <span className="block text-sm font-semibold mb-1.5">Which days could work?</span>
+                <span className="block text-sm font-semibold mb-1.5">Possible days</span>
                 <div className="flex flex-wrap gap-2">
                   {DAYS.map((d, k) => (
                     <button type="button" key={d}
@@ -214,12 +211,12 @@ export default function NewMeeting() {
         )}
 
         <div className="grid grid-cols-2 sm:grid-cols-3 gap-4">
-          <Field label="Earliest">
+          <Field label="Earliest start">
             <select value={startMin} onChange={(e) => setStartMin(+e.target.value)} className="w-full rounded-xl border-2 border-ink/15 bg-white px-3 py-2.5 cursor-pointer">
               {TIMES.map((t) => <option key={t} value={t}>{minLabel(t)}</option>)}
             </select>
           </Field>
-          <Field label="Latest">
+          <Field label="Latest end">
             <select value={endMin} onChange={(e) => setEndMin(+e.target.value)} className="w-full rounded-xl border-2 border-ink/15 bg-white px-3 py-2.5 cursor-pointer">
               {[...TIMES.slice(1), 1440].map((t) => <option key={t} value={t}>{t === 1440 ? 'midnight' : minLabel(t)}</option>)}
             </select>
@@ -231,25 +228,24 @@ export default function NewMeeting() {
           </Field>
         </div>
         <div className="text-sm">
-          Times are in <b>{tzLabel(tz)}</b>.{' '}
+          Time zone: <b>{tzLabel(tz)}</b>{' '}
           <button type="button" className="text-brand-700 font-semibold hover:underline cursor-pointer" onClick={() => setTzOpen(true)}>Change</button>
-          <span className="block text-xs text-ink/50">Everyone else sees them converted to their own time zone.</span>
         </div>
       </Card>
 
-      <Card className="space-y-4">
-        <h2 className="font-bold">Automation</h2>
-        <div className="grid sm:grid-cols-2 gap-4">
-          <Field label="Response deadline" hint="Reminders go out automatically 24 hrs before. At the deadline we pick the best time for you to approve.">
-            <Input type="datetime-local" value={deadline} onChange={(e) => setDeadline(e.target.value)} />
-          </Field>
-          <Field label="Keep the time unless fewer than…" hint="If cancellations drop below this, we’ll look for a new time.">
-            <div className="flex items-center gap-2">
-              <Input type="number" min={1} max={50} value={minAttendees} onChange={(e) => setMinAttendees(+e.target.value)} className="!w-24" />
-              <span className="text-sm text-ink/60">people can come</span>
-            </div>
-          </Field>
+      <Card className="space-y-2">
+        <h2 className="font-bold">Response deadline</h2>
+        <Input type="datetime-local" value={deadline} onChange={(e) => setDeadline(e.target.value)} className="sm:!w-72" />
+        <p className="text-xs text-ink/50">Reminders go out 24 hours before. The best time is picked at the deadline for you to approve.</p>
+      </Card>
+
+      <Card className="space-y-2">
+        <h2 className="font-bold">Minimum attendance</h2>
+        <div className="flex items-center gap-2">
+          <Input type="number" min={1} max={50} value={minAttendees} onChange={(e) => setMinAttendees(+e.target.value)} className="!w-24" />
+          <span className="text-sm text-ink/60">people</span>
         </div>
+        <p className="text-xs text-ink/50">If cancellations drop below this, a new time is found.</p>
       </Card>
 
       {err && <p className="text-red-700 font-medium" role="alert">{err}</p>}

@@ -1,4 +1,4 @@
-# Meeting Scheduler (CS 330 Group 1 prototype)
+# MeetUp (CS 330 Group 1 prototype)
 
 A group scheduling site built from our A3–A5 sketches. Its direction is high automation with user review: it imports calendars, suggests the best time and sends reminders automatically, and the organizer approves the final time.
 

@@ -2,8 +2,8 @@ import { useEffect, useMemo, useRef, useState } from 'react'
 import { Link, useParams } from 'react-router-dom'
 import { buildSlots, layoutForTz, fakeCalendarAvailability, looksSuspicious, AVAILABLE, IF_NEEDED } from '../../shared/schedule.js'
 import { APP_NAME } from '../../shared/config.js'
-import { Button, Callout, Card, Checkbox, Field, Input, Modal, RoleBadge, Spinner, cx, useToast } from '../components/ui'
-import { Grid, GridLegend } from '../components/Grid'
+import { Button, Callout, Card, Checkbox, Field, Input, Modal, Spinner, cx, useToast } from '../components/ui'
+import { Grid } from '../components/Grid'
 import { TimeZonePopup, TzBar } from '../components/TimeZone'
 import { useEvent } from '../lib/useEvent'
 import { api } from '../lib/api'
@@ -81,9 +81,9 @@ export default function Respond() {
       await api.put(`/api/events/${id}/participants/${me.id}`, { pkey: me.key, availability: avail, method, tz: myTz })
       await reload()
       setStep('done')
-      toast({ icon: '✅', title: 'Availability submitted', body: `${ev.organizer.name} has been notified.` })
+      toast({ title: 'Availability submitted' })
     } catch (e: any) {
-      toast({ icon: '⚠️', title: 'Couldn’t save', body: e.message })
+      toast({ title: 'Couldn’t save', body: e.message })
     } finally {
       setSaving(false)
     }
@@ -91,14 +91,13 @@ export default function Respond() {
 
   return (
     <div className="max-w-3xl mx-auto space-y-5">
-      <div className="flex flex-wrap items-center justify-between gap-2">
-        <RoleBadge role={mine?.isOrganizer ? 'Organizer' : 'Respondent'} name={me?.name} />
-        {tz && (
+      {tz && step !== 'grid' && (
+        <div className="flex justify-end">
           <button onClick={() => setTzOpen(true)} className="text-sm rounded-lg border-2 border-ink/15 bg-white px-2.5 py-1 font-semibold hover:border-brand-500 cursor-pointer">
-            🌍 {tzAbbr(myTz)}
+            {tzAbbr(myTz)}
           </button>
-        )}
-      </div>
+        </div>
+      )}
 
       {step === 'invite' && <InviteStep ev={ev} myTz={myTz} name={name} setName={setName} onNext={(pid) => (pid ? join({ participantId: pid }) : setStep('identify'))} />}
       {step === 'identify' && (
@@ -140,7 +139,7 @@ function InviteStep({ ev, myTz, name, setName, onNext }: { ev: MeetingEvent; myT
   return (
     <Card className="space-y-5">
       <div>
-        <h1 className="text-3xl font-extrabold">You’re invited!</h1>
+        <h1 className="text-3xl font-extrabold">You’re invited</h1>
         <p className="text-ink/65 mt-1"><b>{ev.organizer.name}</b> invited you to <b>{ev.name}</b>{ev.org && <> ({ev.org})</>}.</p>
       </div>
       <div className="rounded-2xl bg-paper border border-ink/10 p-4 text-sm grid sm:grid-cols-3 gap-3">
@@ -149,7 +148,7 @@ function InviteStep({ ev, myTz, name, setName, onNext }: { ev: MeetingEvent; myT
         <div><div className="text-ink/50 text-xs font-semibold uppercase">Reply by</div>{fmt(ev.deadline, myTz, "EEE h:mm a")} {tzAbbr(myTz)}</div>
       </div>
       {ev.status === 'confirmed' && ev.confirmed && (
-        <Callout tone="info">A time was already picked: <b>{fmt(ev.confirmed.start, myTz, 'EEE, MMM d · h:mm a')}</b>. You can still add your availability.</Callout>
+        <Callout tone="info">Set for <b>{fmt(ev.confirmed.start, myTz, 'EEE, MMM d · h:mm a')}</b></Callout>
       )}
       {open.length > 0 && (
         <div>
@@ -171,10 +170,9 @@ function InviteStep({ ev, myTz, name, setName, onNext }: { ev: MeetingEvent; myT
       {(who === 'new' || !open.length) && (
         <Field label="Your name"><Input autoFocus value={name} onChange={(e) => setName(e.target.value)} placeholder="First name is fine" /></Field>
       )}
-      <Callout>Not in by {fmt(ev.deadline, myTz, 'EEE h:mm a')}? We’ll schedule without you.</Callout>
       <Button size="lg" block disabled={!name.trim()} onClick={() => onNext()}>Continue</Button>
       {who && who !== 'new' && (
-        <button className="block mx-auto text-sm text-ink/55 hover:underline cursor-pointer" onClick={() => onNext(who)}>Skip sign-in and just answer as {name}</button>
+        <button className="block mx-auto text-sm text-ink/55 hover:underline cursor-pointer" onClick={() => onNext(who)}>Skip sign-in</button>
       )}
     </Card>
   )
@@ -195,7 +193,7 @@ function IdentifyStep({ name, setName, contact, setContact, onCodeSent, onSkip, 
     setErr(''); setBusy(true)
     try {
       const r = await api.post<{ demoCode: string; channel: string }>('/api/auth/start', { contact })
-      toast({ icon: r.channel === 'email' ? '✉️' : '💬', title: `${APP_NAME} code: ${r.demoCode}`, body: `Demo: this is the ${r.channel === 'email' ? 'email' : 'text'} you’d receive.` })
+      toast({ title: `${APP_NAME} code: ${r.demoCode}`, body: `Demo ${r.channel === 'email' ? 'email' : 'text'}` })
       onCodeSent()
     } catch (e: any) { setErr(e.message) } finally { setBusy(false) }
   }
@@ -214,7 +212,7 @@ function IdentifyStep({ name, setName, contact, setContact, onCodeSent, onSkip, 
         <>
           <div>
             <h1 className="text-2xl font-extrabold">Continue as guest</h1>
-            <p className="text-sm text-ink/60 mt-1">So you can come back and edit later, and get reminders. No password needed.</p>
+            <p className="text-sm text-ink/60 mt-1">So you can edit later and get reminders.</p>
           </div>
           <Field label="Your name"><Input value={name} onChange={(e) => setName(e.target.value)} /></Field>
           <Field label="Email or phone number"><Input autoFocus inputMode="email" placeholder="you@school.edu or (312) 555-0100" value={contact} onChange={(e) => setContact(e.target.value)} onKeyDown={(e) => e.key === 'Enter' && contact && sendCode()} /></Field>
@@ -222,8 +220,8 @@ function IdentifyStep({ name, setName, contact, setContact, onCodeSent, onSkip, 
           <Button block size="lg" onClick={sendCode} disabled={!contact.trim() || !name.trim() || busy}>Send me a code</Button>
           <div className="flex items-center gap-3 text-xs text-ink/40"><span className="h-px flex-1 bg-ink/15" />or<span className="h-px flex-1 bg-ink/15" /></div>
           <div className="flex flex-col gap-2 text-sm text-center">
-            <button className="font-semibold text-brand-700 hover:underline cursor-pointer" onClick={() => setMode('account')}>Sign in / register with a password</button>
-            <button className="text-ink/55 hover:underline cursor-pointer" onClick={onSkip} disabled={!name.trim()}>Skip, just use my name</button>
+            <button className="font-semibold text-brand-700 hover:underline cursor-pointer" onClick={() => setMode('account')}>Sign in with a password</button>
+            <button className="text-ink/55 hover:underline cursor-pointer" onClick={onSkip} disabled={!name.trim()}>Skip</button>
           </div>
         </>
       ) : (
@@ -236,7 +234,7 @@ function IdentifyStep({ name, setName, contact, setContact, onCodeSent, onSkip, 
             <Button onClick={() => account('login')} disabled={busy}>Sign in</Button>
             <Button variant="secondary" onClick={() => account('register')} disabled={busy}>Register</Button>
           </div>
-          <button className="block mx-auto text-sm font-semibold text-brand-700 hover:underline cursor-pointer" onClick={() => setMode('guest')}>← Continue as guest instead</button>
+          <button className="block mx-auto text-sm font-semibold text-brand-700 hover:underline cursor-pointer" onClick={() => setMode('guest')}>Continue as guest</button>
         </>
       )}
     </Card>
@@ -264,8 +262,7 @@ function CodeStep({ contact, onBack, onVerified }: { contact: string; onBack: ()
         className="text-center text-3xl tracking-[.5em] font-bold" />
       {err && <p className="text-sm text-red-700">{err}</p>}
       <Button block size="lg" onClick={verify} disabled={code.length !== 6}>Confirm</Button>
-      <p className="text-xs text-ink/50">* Your info is stored only until the meeting date passes. <button className="text-brand-700 font-semibold hover:underline cursor-pointer" onClick={onBack}>Use a different email/phone</button></p>
-      <p className="text-xs text-ink/40">Demo: the code shows in the notification at the top, and on the <Link to="/outbox" target="_blank" className="underline">Outbox</Link> page.</p>
+      <button className="text-sm text-brand-700 font-semibold hover:underline cursor-pointer" onClick={onBack}>Use a different email or phone</button>
     </Card>
   )
 }
@@ -285,7 +282,7 @@ function MethodStep({ ev, tz, name, onPicked }: { ev: MeetingEvent; tz: string; 
       const a = fakeCalendarAvailability(ev, name || 'guest')
       setConnecting(null)
       setPhase('ask')
-      toast({ icon: '📅', title: `${connecting === 'google' ? 'Google' : 'iCloud'} Calendar connected`, body: 'We filled in your free times. Check them over.' })
+      toast({ title: `${connecting === 'google' ? 'Google' : 'iCloud'} Calendar connected` })
       onPicked(a, connecting!)
     }, 1400)
   }
@@ -293,7 +290,7 @@ function MethodStep({ ev, tz, name, onPicked }: { ev: MeetingEvent; tz: string; 
     setIcsErr('')
     try {
       const { availability, busyCount } = availabilityFromIcs(await f.text(), ev)
-      toast({ icon: '📂', title: 'Calendar file read', body: `Found ${busyCount} busy event${busyCount === 1 ? '' : 's'} during this meeting’s days.` })
+      toast({ title: 'Calendar file read', body: `${busyCount} busy event${busyCount === 1 ? '' : 's'} found` })
       onPicked(availability, 'ics')
     } catch {
       setIcsErr('That file didn’t look like a calendar (.ics). Try exporting it again.')
@@ -301,11 +298,10 @@ function MethodStep({ ev, tz, name, onPicked }: { ev: MeetingEvent; tz: string; 
   }
   const parsed = useMemo(() => (text.trim() ? parseFreeText(text, ev, tz) : null), [text, ev, tz])
 
-  const Option = ({ icon, title, sub, onClick, primary }: { icon: string; title: string; sub: string; onClick: () => void; primary?: boolean }) => (
-    <button onClick={onClick} className={cx('w-full text-left rounded-2xl border-2 px-4 py-4 flex items-center gap-4 cursor-pointer transition',
+  const Option = ({ title, onClick, primary }: { title: string; onClick: () => void; primary?: boolean }) => (
+    <button onClick={onClick} className={cx('w-full text-left rounded-2xl border-2 px-4 py-3.5 font-bold text-brand-900 cursor-pointer transition',
       primary ? 'border-brand-600 bg-brand-200 hover:bg-brand-300' : 'border-brand-600 bg-white hover:bg-brand-50')}>
-      <span className="text-2xl">{icon}</span>
-      <span><span className="block font-bold text-brand-900">{title}</span><span className="block text-sm text-ink/60">{sub}</span></span>
+      {title}
     </button>
   )
 
@@ -313,25 +309,20 @@ function MethodStep({ ev, tz, name, onPicked }: { ev: MeetingEvent; tz: string; 
     <Card className="space-y-4">
       <div>
         <h1 className="text-2xl font-extrabold">Share your availability</h1>
-        <p className="text-sm text-ink/60 mt-1">Pick the fastest way for you. You’ll get to review it before sending.</p>
+        <p className="text-sm text-ink/60 mt-1">You can review it before sending.</p>
       </div>
-      <Option primary icon="🗓️" title="Connect Google Calendar" sub="We only see when you’re busy, not what the events are." onClick={() => setConnecting('google')} />
-      <Option icon="☁️" title="Connect iCloud Calendar" sub="Works with the Apple Calendar on your iPhone or Mac." onClick={() => setConnecting('icloud')} />
-      <Option icon="📂" title="Upload a calendar file (.ics)" sub="Export from Google, Apple or Outlook Calendar." onClick={() => fileRef.current?.click()} />
+      <Option primary title="Connect Google Calendar" onClick={() => setConnecting('google')} />
+      <Option title="Connect iCloud Calendar" onClick={() => setConnecting('icloud')} />
+      <Option title="Upload a calendar file (.ics)" onClick={() => fileRef.current?.click()} />
       <input ref={fileRef} type="file" accept=".ics,text/calendar" className="hidden" onChange={(e) => e.target.files?.[0] && onFile(e.target.files[0])} />
       {icsErr && <p className="text-sm text-red-700">{icsErr}</p>}
-      <Option icon="💬" title="Type when you’re free" sub="“Weekday afternoons except Wednesday”" onClick={() => setTextOpen(true)} />
-      <button className="block mx-auto text-sm font-semibold text-brand-700 hover:underline cursor-pointer" onClick={() => onPicked({}, 'manual')}>Or fill in the grid by hand →</button>
+      <Option title="Type when you’re free" onClick={() => setTextOpen(true)} />
+      <button className="block mx-auto text-sm font-semibold text-brand-700 hover:underline cursor-pointer" onClick={() => onPicked({}, 'manual')}>Or fill in the grid by hand</button>
 
       <Modal open={!!connecting} onClose={() => setConnecting(null)} title={connecting === 'google' ? 'Connect Google Calendar' : 'Connect iCloud Calendar'}>
         {phase === 'ask' ? (
           <div className="space-y-4">
-            <div className="rounded-xl bg-paper p-4 text-sm space-y-2">
-              <p><b>{APP_NAME}</b> would like to:</p>
-              <p>✓ See when you’re free or busy</p>
-              <p className="text-ink/50">✗ It will <b>not</b> see event names, locations, or who you meet with</p>
-            </div>
-            <p className="text-xs text-ink/50">Demo: this simulates the sign-in screen. Real calendar access would use {connecting === 'google' ? 'Google’s' : 'Apple’s'} OAuth.</p>
+            <p className="text-sm"><b>{APP_NAME}</b> will see when you’re busy, not event details.</p>
             <div className="grid grid-cols-2 gap-2">
               <Button variant="ghost" onClick={() => setConnecting(null)}>Cancel</Button>
               <Button onClick={connect}>Allow</Button>
@@ -345,7 +336,7 @@ function MethodStep({ ev, tz, name, onPicked }: { ev: MeetingEvent; tz: string; 
       <Modal open={textOpen} onClose={() => setTextOpen(false)} title="Type when you’re free">
         <div className="space-y-3">
           <textarea autoFocus value={text} onChange={(e) => setText(e.target.value)} rows={3}
-            placeholder="e.g. weekday afternoons except Wed, Friday mornings if needed"
+            placeholder="weekday afternoons except Wed, Friday mornings if needed"
             className="w-full rounded-xl border-2 border-ink/15 px-3.5 py-2.5 outline-none focus:border-brand-500" />
           <div className="flex flex-wrap gap-1.5">
             {['weekday afternoons except wed', 'mon-thu after 3pm', 'tue & thu 10am-2pm', 'evenings if needed', 'anytime, busy monday morning'].map((ex) => (
@@ -357,7 +348,6 @@ function MethodStep({ ev, tz, name, onPicked }: { ev: MeetingEvent; tz: string; 
               {parsed.notes.map((n, i) => <div key={i}>• {n}</div>)}
             </div>
           )}
-          <p className="text-xs text-ink/45">Times are read in {tzAbbr(tz)}.</p>
           <Button block disabled={!parsed?.matched} onClick={() => { onPicked(parsed!.availability, 'text'); setTextOpen(false) }}>
             Fill in {parsed?.matched || 0} time slots
           </Button>
@@ -394,56 +384,48 @@ function GridStep({ ev, myTz, viewTz, setViewTz, openTz, avail, setAvail, method
     setAvail(next)
   }
 
-  const methodNote: Record<string, string> = {
-    google: 'Filled in from your Google Calendar.', icloud: 'Filled in from your iCloud Calendar.',
-    ics: 'Filled in from your calendar file.', text: 'Filled in from what you typed.', manual: 'Drag across the grid to mark when you’re free.',
-  }
-
   return (
     <Card className="space-y-4">
-      <div className="flex flex-wrap items-start justify-between gap-2">
-        <div>
-          <h1 className="text-2xl font-extrabold">Check your times</h1>
-          <p className="text-sm text-ink/60 mt-1">{methodNote[method] || methodNote.manual} {method !== 'manual' && 'Fix anything that’s off by dragging.'}</p>
+      <div>
+        <h1 className="text-2xl font-extrabold">Check your times</h1>
+        <p className="text-sm text-ink/60 mt-1">{method === 'manual' ? 'Drag to mark when you’re free.' : 'Filled in for you. Drag to fix anything.'}</p>
+      </div>
+
+      <div className="flex flex-wrap items-center justify-between gap-2">
+        <div className="flex flex-wrap gap-2">
+          {[
+            { v: AVAILABLE, label: 'Available', cls: 'bg-go-500 text-white border-go-500' },
+            { v: IF_NEEDED, label: 'If needed', cls: 'bg-maybe-400 border-maybe-400' },
+            { v: 0, label: 'Can’t', cls: 'bg-white border-ink/30' },
+          ].map((b) => (
+            <button key={b.v} onClick={() => setBrush(b.v)}
+              className={cx('rounded-full border-2 px-3 py-1 text-sm font-semibold cursor-pointer', b.cls, brush === b.v ? 'ring-2 ring-offset-2 ring-ink' : 'opacity-70 hover:opacity-100')}>
+              {b.label}
+            </button>
+          ))}
         </div>
+        <TzBar viewTz={viewTz} myTz={myTz} onOpenPicker={openTz}
+          members={ev.participants.filter((p) => p.tz && p.tz !== myTz).map((p) => ({ name: p.name, tz: p.tz }))}
+          onView={(t) => setViewTz(t === myTz ? null : t)} />
       </div>
-
-      <div className="flex flex-wrap items-center gap-2">
-        <span className="text-sm font-semibold mr-1">Brush:</span>
-        {[
-          { v: AVAILABLE, label: 'Available', cls: 'bg-brand-500 text-white border-brand-500' },
-          { v: IF_NEEDED, label: 'If needed', cls: 'bg-maybe-400 border-maybe-400' },
-          { v: 0, label: 'Can’t', cls: 'bg-white border-ink/30' },
-        ].map((b) => (
-          <button key={b.v} onClick={() => setBrush(b.v)}
-            className={cx('rounded-full border-2 px-3 py-1 text-sm font-semibold cursor-pointer', b.cls, brush === b.v ? 'ring-2 ring-offset-2 ring-ink' : 'opacity-70 hover:opacity-100')}>
-            {b.label}
-          </button>
-        ))}
-      </div>
-
-      <TzBar viewTz={viewTz} myTz={myTz} onOpenPicker={openTz}
-        members={ev.participants.filter((p) => p.tz && p.tz !== myTz).map((p) => ({ name: p.name, tz: p.tz }))}
-        onView={(t) => setViewTz(t === myTz ? null : t)} />
 
       <Grid mode="paint" event={ev} viewTz={viewTz} value={avail} onChange={setAvail} brush={brush} />
-      <GridLegend mode="paint" />
 
-      <div className="flex flex-wrap items-center gap-2 text-sm rounded-xl bg-paper px-3 py-2">
+      <div className="flex flex-wrap items-center gap-2 text-sm">
         <span>Copy</span>
         <select value={copyFrom} onChange={(e) => setCopyFrom(e.target.value)} className="rounded-lg border border-ink/15 bg-white px-2 py-1 cursor-pointer">
           {layout.cols.map((c) => <option key={c} value={c}>{format(parseISO(c), ev.recurring ? 'EEEE' : 'EEE MMM d')}</option>)}
         </select>
-        <span>to every other day</span>
+        <span>to all days</span>
         <Button size="sm" variant="secondary" onClick={copyDay}>Copy</Button>
         <span className="flex-1" />
-        <Button size="sm" variant="ghost" onClick={() => setAvail({})}>Clear all</Button>
+        <Button size="sm" variant="ghost" onClick={() => setAvail({})}>Clear</Button>
       </div>
 
-      {suspicious && <Callout tone="warn">You’re marked free for almost the whole week. If that’s right, great! If not, mark when you’re busy so the group doesn’t pick a bad time.</Callout>}
+      {suspicious && <Callout tone="warn">You’re marked free almost all week. Mark busy times if that’s not right.</Callout>}
 
       <div className="flex gap-2">
-        <Button variant="ghost" onClick={onBack}>← Back</Button>
+        <Button variant="ghost" onClick={onBack}>Back</Button>
         <Button size="lg" className="flex-1" onClick={onDone} disabled={saving || filled === 0}>{saving ? 'Saving…' : 'Done'}</Button>
       </div>
     </Card>
@@ -462,13 +444,13 @@ function DoneStep({ ev, me, p, tz, onEdit, reload }: {
   }
   const confirmCheck = async () => {
     await api.post(`/api/events/${ev.id}/participants/${me.id}/confirm`, { pkey: me.key })
-    toast({ icon: '👍', title: 'Thanks for confirming' })
+    toast({ title: 'Thanks for confirming' })
     reload()
   }
   const cantMakeIt = async () => {
     if (!confirm('Let the organizer know you can’t make it?')) return
     await api.post(`/api/events/${ev.id}/participants/${me.id}/cant-make-it`, { pkey: me.key })
-    toast({ icon: '📨', title: `${ev.organizer.name} was notified` })
+    toast({ title: `${ev.organizer.name} was notified` })
     reload()
   }
   const c = ev.confirmed
@@ -490,13 +472,13 @@ function DoneStep({ ev, me, p, tz, onEdit, reload }: {
       ) : (
         <Card className="space-y-2">
           <h1 className="text-3xl font-extrabold">Availability submitted</h1>
-          <p className="text-ink/65">Thanks, {me.name}! We’ll pick the best time after {fmt(ev.deadline, tz, 'EEE h:mm a')} and let you know.</p>
+          <p className="text-ink/65">You’ll be notified when a time is picked.</p>
         </Card>
       )}
 
       {p.flagged && (
         <Callout tone="warn">
-          <b>Quick check:</b> you’re marked free almost all week. Is that right?{' '}
+          You’re marked free almost all week.{' '}
           <button className="font-semibold underline cursor-pointer" onClick={confirmCheck}>Yes, I’m really free</button>{' · '}
           <button className="font-semibold underline cursor-pointer" onClick={onEdit}>Let me fix it</button>
         </Callout>
@@ -504,7 +486,7 @@ function DoneStep({ ev, me, p, tz, onEdit, reload }: {
 
       <Card className="space-y-2">
         <Checkbox checked={enabled} onChange={(v) => { setEnabled(v); saveRem(v ? { h24: true, h1: true } : { h24: false, h1: false }) }}
-          label="Enable event reminders by email / text" sub={p.hasContact || p.contact ? undefined : 'Add an email or phone next time to get these.'} />
+          label="Reminders" />
         <div className={cx('pl-8 space-y-1 border-l-2 border-ink/10 ml-2.5', !enabled && 'opacity-40 pointer-events-none')}>
           <Checkbox checked={rem.h24} onChange={(v) => saveRem({ ...rem, h24: v })} label="24 hrs before" />
           <Checkbox checked={rem.h1} onChange={(v) => saveRem({ ...rem, h1: v })} label="1 hr before" />
@@ -515,7 +497,6 @@ function DoneStep({ ev, me, p, tz, onEdit, reload }: {
         <Button variant="soft" onClick={onEdit}>Edit availability</Button>
         <Link to="/me"><Button variant="ghost">All my meetings</Button></Link>
       </div>
-      <p className="text-xs text-ink/50">Your availability is saved under your account, email or phone number and will be deleted after the event. You can come back any time from “My meetings”, no link needed.</p>
     </div>
   )
 }

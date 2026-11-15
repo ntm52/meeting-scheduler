@@ -1,26 +1,23 @@
 import { useMemo, useState } from 'react'
 import { Link, useParams, useSearchParams } from 'react-router-dom'
 import { slotCounts, buildSlots, respondedParticipants, type Suggestion } from '../../shared/schedule.js'
-import { Button, Callout, Card, Checkbox, Modal, Pill, Progress, RoleBadge, Spinner, cx, useToast } from '../components/ui'
+import { Button, Callout, Card, Checkbox, Modal, Pill, Progress, Spinner, cx, useToast } from '../components/ui'
 import { Grid, GridLegend } from '../components/Grid'
 import { TimeZonePopup, TzBar } from '../components/TimeZone'
 import { useEvent } from '../lib/useEvent'
 import { api } from '../lib/api'
 import { getStore, update } from '../lib/storage'
-import { detectTz, fmt, relTime, tzAbbr } from '../lib/tz'
+import { detectTz, fmt, tzAbbr } from '../lib/tz'
 import { downloadIcs } from '../lib/ics'
 import type { MeetingEvent, Participant } from '../lib/types'
 
-const methodLabel: Record<string, string> = { google: 'Google Calendar', icloud: 'iCloud Calendar', ics: 'Calendar file', text: 'Typed it', manual: 'Painted grid' }
-
 function statusOf(p: Participant, ev: MeetingEvent) {
   const has = Object.keys(p.availability || {}).length > 0
-  if (ev.status === 'confirmed' && p.cantMakeIt) return { tone: 'red' as const, label: 'Can’t make it', sub: 'Cancelled after the time was set' }
-  if (has && p.flagged) return { tone: 'amber' as const, label: 'Check?', sub: 'Said free all week. Asked to confirm.' }
-  if (has && p.status === 'updated') return { tone: 'green' as const, label: 'Updated', sub: `${methodLabel[p.method || 'manual'] || 'Responded'} · changed ${p.updatedAt ? relTime(p.updatedAt) : ''}` }
-  if (has) return { tone: 'green' as const, label: p.method === 'google' || p.method === 'icloud' ? 'Connected' : 'Responded', sub: methodLabel[p.method || 'manual'] }
-  if (p.autoReminded) return { tone: 'amber' as const, label: 'No response', sub: 'Reminder sent automatically' }
-  return { tone: 'amber' as const, label: 'Waiting', sub: p.contact || p.hasContact ? 'Invited' : 'Hasn’t opened the link yet' }
+  if (ev.status === 'confirmed' && p.cantMakeIt) return { tone: 'red' as const, label: 'Can’t make it' }
+  if (has && p.flagged) return { tone: 'amber' as const, label: 'Free all week?' }
+  if (has && p.status === 'updated') return { tone: 'green' as const, label: 'Updated' }
+  if (has) return { tone: 'green' as const, label: 'Responded' }
+  return { tone: 'amber' as const, label: 'Waiting' }
 }
 
 export default function Manage() {
@@ -67,7 +64,7 @@ export default function Manage() {
 
   const approve = async (s: { start: number; end: number }) => {
     await api.post(`/api/events/${id}/approve`, { k, start: s.start, end: s.end })
-    toast({ icon: '✅', title: 'Meeting set', body: 'Everyone was notified and it was added to their calendars.' })
+    toast({ title: 'Meeting set', body: 'Everyone was notified.' })
     setPicked(null)
     reload()
   }
@@ -83,41 +80,31 @@ export default function Manage() {
     <div className="space-y-5">
       <div className="flex flex-wrap items-end justify-between gap-3">
         <div>
-          <RoleBadge role="Organizer" name={ev.organizer.name} />
           <h1 className="text-3xl font-extrabold">{ev.name}</h1>
-          <p className="text-ink/60 text-sm mt-1">
-            {ev.org && <>{ev.org} · </>}
-            {ev.recurring ? `Repeats ${ev.recurring.freq}` : `${ev.dates.length} possible days`} · {ev.durationMinutes} min
-          </p>
+          {ev.org && <p className="text-ink/60 text-sm mt-1">{ev.org}</p>}
         </div>
         <div className="flex gap-2">
-          <Link to={`/e/${id}/share?k=${k}`}><Button variant="secondary" size="sm">Share link</Button></Link>
+          <Link to={`/e/${id}/share?k=${k}`}><Button variant="secondary" size="sm">Invite people</Button></Link>
           <Link to={`/e/${id}`}><Button variant="ghost" size="sm">{me && Object.keys(me.availability).length ? 'Edit my times' : 'Add my times'}</Button></Link>
+          <Link to="/outbox"><Button variant="ghost" size="sm">Outbox</Button></Link>
         </div>
       </div>
 
       {/* ---- top status card ---- */}
       {ev.status === 'collecting' && (
         <Card className="space-y-3">
-          <div className="flex items-center justify-between">
-            <h2 className="text-xl font-bold">Finding a time…</h2>
-            <Pill tone="amber" dot>Collecting</Pill>
-          </div>
+          <h2 className="text-xl font-bold">Responses</h2>
           <Progress value={responded.length} max={total} />
           <div className="flex justify-between text-sm text-ink/65">
-            <span><b className="text-ink">{responded.length} of {total}</b> calendars in</span>
-            <span>Deadline: <b className="text-ink">{fmt(ev.deadline, viewTz, 'EEE h:mm a')}</b> ({relTime(ev.deadline)})</span>
+            <span><b className="text-ink">{responded.length} of {total}</b></span>
+            <span>Due <b className="text-ink">{fmt(ev.deadline, viewTz, 'EEE h:mm a')}</b></span>
           </div>
-          <Callout>We’ll pick the best time automatically at the deadline and ask you to approve it. Or approve a suggestion below whenever you’re ready.</Callout>
         </Card>
       )}
 
       {ev.status === 'review' && ev.proposed && (
         <Card className="space-y-4 border-2 !border-brand-600">
-          <div className="flex items-center justify-between">
-            <h2 className="text-xl font-bold">✨ We found a time</h2>
-            <Pill tone="blue" dot>Needs your OK</Pill>
-          </div>
+          <h2 className="text-xl font-bold">Suggested time</h2>
           <MeetingCard ev={ev} start={ev.proposed.start} end={ev.proposed.end} tz={viewTz} count={ev.proposed.can.length + ev.proposed.ifNeeded.length} />
           <div className="flex flex-wrap gap-2">
             <Button onClick={() => approve(ev.proposed!)}>Approve & notify everyone</Button>
@@ -127,11 +114,11 @@ export default function Manage() {
       )}
 
       {ev.status === 'review' && !ev.proposed && (
-        <Callout tone="warn">The deadline passed but nobody has shared availability yet. <button className="font-semibold underline cursor-pointer" onClick={reopen}>Extend the deadline</button></Callout>
+        <Callout tone="warn">The deadline passed with no responses. <button className="font-semibold underline cursor-pointer" onClick={reopen}>Extend the deadline</button></Callout>
       )}
 
       {ev.status === 'confirmed' && ev.confirmed && (
-        <ConfirmedCard ev={ev} tz={viewTz} attending={data.attending} onReopen={reopen} />
+        <ConfirmedCard ev={ev} tz={viewTz} attending={data.attending} onReopen={reopen} inviteHref={`/e/${id}/share?k=${k}`} />
       )}
 
       <div className="grid lg:grid-cols-[minmax(0,1fr)_340px] gap-5 items-start">
@@ -151,7 +138,7 @@ export default function Manage() {
           <Grid mode="heat" event={ev} viewTz={viewTz} counts={counts} total={responded.length} onHover={setHover} selected={hover} highlight={highlight} />
           <div className="min-h-[4.5rem] rounded-xl bg-paper border border-ink/5 px-4 py-3 text-sm">
             {hover == null ? (
-              <span className="text-ink/55">Hover or tap a time to see who’s free. Outlined cells are the suggested time.</span>
+              <span className="text-ink/55">Tap a time to see who’s free.</span>
             ) : (
               <>
                 <div className="font-bold mb-1">{fmt(slots[hover].t, viewTz, 'EEEE h:mm a')} {tzAbbr(viewTz)}</div>
@@ -160,7 +147,7 @@ export default function Manage() {
                     const st = hovered!.avail.includes(p.name) ? 'free' : hovered!.maybe.includes(p.name) ? 'maybe' : 'busy'
                     return (
                       <span key={p.id} className={cx('rounded-full px-2.5 py-0.5 text-xs font-semibold',
-                        st === 'free' && 'bg-brand-600 text-white', st === 'maybe' && 'bg-maybe-200 text-amber-900', st === 'busy' && 'bg-ink/5 text-ink/40 line-through')}>
+                        st === 'free' && 'bg-go-500 text-white', st === 'maybe' && 'bg-maybe-200 text-amber-900', st === 'busy' && 'bg-ink/5 text-ink/40 line-through')}>
                         {p.name}
                       </span>
                     )
@@ -176,49 +163,37 @@ export default function Manage() {
         <div className="space-y-5 order-1 lg:order-2">
           <Card className="!p-0 overflow-hidden">
             <div className="px-5 pt-5 pb-3 flex items-center justify-between">
-              <h2 className="font-bold text-lg">Responses</h2>
-              <Button size="sm" variant="secondary" onClick={() => setRemindOpen(true)} disabled={!waiting.length && !ev.participants.some((p) => p.flagged)}>🔔 Remind</Button>
+              <h2 className="font-bold text-lg">People</h2>
+              <Button size="sm" variant="secondary" onClick={() => setRemindOpen(true)} disabled={!waiting.length && !ev.participants.some((p) => p.flagged)}>Remind</Button>
             </div>
             <ul className="divide-y divide-ink/10 border-t border-ink/10">
               {ev.participants.map((p) => {
                 const st = statusOf(p, ev)
                 const dim = hover != null && Object.keys(p.availability).length > 0 && !hoveredNames.has(p.name)
                 return (
-                  <li key={p.id} className={cx('px-5 py-3 transition-opacity', dim && 'opacity-40')}>
-                    <div className="flex items-center justify-between gap-2">
-                      <span className="font-semibold truncate">{p.isOrganizer ? `${p.name} (you, organizer)` : p.name}</span>
-                      <Pill tone={st.tone} dot>{st.label}</Pill>
-                    </div>
-                    <div className="flex justify-between gap-2 text-xs text-ink/55 mt-0.5">
-                      <span className="truncate">{st.sub}</span>
-                      {p.tz && <span className="shrink-0">{tzAbbr(p.tz)}</span>}
-                    </div>
+                  <li key={p.id} className={cx('px-5 py-3 flex items-center justify-between gap-2 transition-opacity', dim && 'opacity-40')}>
+                    <span className="font-semibold truncate">{p.isOrganizer ? `${p.name} (you)` : p.name}</span>
+                    <Pill tone={st.tone}>{st.label}</Pill>
                   </li>
                 )
               })}
             </ul>
-            <div className="px-5 py-3 bg-paper text-xs text-ink/55 border-t border-ink/10">All times show in your time zone ({tzAbbr(viewTz)}). Everyone else sees their own.</div>
           </Card>
 
           {ev.status !== 'confirmed' && (
             <Card className="space-y-3">
               <h2 className="font-bold text-lg">Best times</h2>
-              {!suggestions.length && <p className="text-sm text-ink/55">Suggestions appear once people respond.</p>}
+              {!suggestions.length && <p className="text-sm text-ink/55">None yet.</p>}
               {suggestions.map((s, i) => {
                 const n = s.can.length + s.ifNeeded.length
                 const on = focus && focus.start === s.start
                 return (
                   <div key={s.start} className={cx('rounded-xl border-2 p-3 cursor-pointer transition', on ? 'border-brand-600 bg-brand-50' : 'border-ink/10 hover:border-brand-300')} onClick={() => setPicked(s)}>
                     <div className="flex items-center justify-between gap-2">
-                      <span className="font-bold">{i === 0 && '⭐ '}{fmt(s.start, viewTz, 'EEE')} · {fmt(s.start, viewTz, 'h:mm')}–{fmt(s.end, viewTz, 'h:mm a')}</span>
-                      <span className={cx('text-xs font-bold', n === responded.length ? 'text-brand-700' : 'text-amber-700')}>{n} of {total}</span>
+                      <span className="font-bold">{fmt(s.start, viewTz, 'EEE')} · {fmt(s.start, viewTz, 'h:mm')}–{fmt(s.end, viewTz, 'h:mm a')}</span>
+                      <span className={cx('text-xs font-bold', n === responded.length ? 'text-go-700' : 'text-amber-700')}>{n} of {total}</span>
                     </div>
-                    <div className="text-xs text-ink/60 mt-1">
-                      {s.ifNeeded.length > 0 && <>If needed: {s.ifNeeded.join(', ')}. </>}
-                      {s.cannot.length > 0 && <>Can’t: {s.cannot.join(', ')}. </>}
-                      {waiting.length > 0 && <>No answer yet: {waiting.map((w) => w.name).join(', ')}.</>}
-                      {!s.ifNeeded.length && !s.cannot.length && !waiting.length && 'Everyone can make it.'}
-                    </div>
+                    {s.cannot.length > 0 && <div className="text-xs text-ink/60 mt-1">Can’t: {s.cannot.join(', ')}</div>}
                     {on && <Button size="sm" className="mt-2" onClick={(e) => { e.stopPropagation(); approve(s) }}>Approve this time</Button>}
                   </div>
                 )
@@ -244,12 +219,12 @@ function MeetingCard({ ev, start, end, tz, count, faded }: { ev: MeetingEvent; s
         {fmt(start, tz, 'EEE, MMM d')} · {fmt(start, tz, 'h:mm')}–{fmt(end, tz, 'h:mm a')} {tzAbbr(tz, start)}
       </div>
       {ev.recurring && <div className="text-sm mt-1">Repeats {ev.recurring.freq}</div>}
-      <div className={cx('font-semibold mt-1', count >= total ? 'text-brand-800' : 'text-amber-800')}>{count} of {total} can attend</div>
+      <div className={cx('font-semibold mt-1', count >= total ? 'text-go-800' : 'text-amber-800')}>{count} of {total} can attend</div>
     </div>
   )
 }
 
-function ConfirmedCard({ ev, tz, attending, onReopen }: { ev: MeetingEvent; tz: string; attending: number; onReopen: () => void }) {
+function ConfirmedCard({ ev, tz, attending, onReopen, inviteHref }: { ev: MeetingEvent; tz: string; attending: number; onReopen: () => void; inviteHref: string }) {
   const c = ev.confirmed!
   const dropped = ev.participants.filter((p) => p.cantMakeIt)
   return (
@@ -264,15 +239,12 @@ function ConfirmedCard({ ev, tz, attending, onReopen }: { ev: MeetingEvent; tz: 
       )}
       <MeetingCard ev={ev} start={c.start} end={c.end} tz={tz} count={attending} faded={dropped.length > 0} />
       {dropped.length > 0 && (
-        <Callout>This time stays unless fewer than {ev.minAttendees} people can come. Right now {attending} can.</Callout>
+        <Callout>Minimum is {ev.minAttendees}. {attending} can still come.</Callout>
       )}
-      <ul className="text-sm space-y-1.5">
-        <li>📅 Added to everyone’s calendar</li>
-        <li>🔔 Reminders 24 hrs and 1 hr before (for people who turned them on)</li>
-        <li>📨 Everyone was notified by text or email. <Link to="/outbox" className="text-brand-700 font-semibold hover:underline">See messages</Link></li>
-      </ul>
+      <p className="text-sm text-ink/65">Everyone was notified.</p>
       <div className="flex flex-wrap gap-2">
-        <Button variant="soft" onClick={() => downloadIcs(ev, c.start, c.end)}>Download calendar invite (.ics)</Button>
+        <Link to={inviteHref}><Button>Invite more people</Button></Link>
+        <Button variant="soft" onClick={() => downloadIcs(ev, c.start, c.end)}>Download invite (.ics)</Button>
         <Button variant="ghost" onClick={onReopen}>Pick a different time</Button>
       </div>
     </Card>
@@ -286,21 +258,20 @@ function RemindModal({ open, onClose, ev, k, link }: { open: boolean; onClose: (
   const all = sel ?? new Set(targets.map((t) => t.id))
   const send = async () => {
     const r = await api.post<{ sent: number }>(`/api/events/${ev.id}/remind`, { k, participantIds: [...all], link: `${link}` })
-    toast({ icon: '📨', title: `Reminder sent to ${r.sent}`, body: 'They got a text or email with the link.' })
+    toast({ title: `Reminder sent to ${r.sent}` })
     setSel(null)
     onClose()
   }
   return (
     <Modal open={open} onClose={onClose} title="Remind people">
-      <p className="text-sm text-ink/60 mb-3">We’ll text or email them the link. No need to dig it up yourself.</p>
       <div className="space-y-1">
         {targets.map((p) => (
           <Checkbox key={p.id} checked={all.has(p.id)}
             onChange={(v) => setSel(() => { const n = new Set(all); v ? n.add(p.id) : n.delete(p.id); return n })}
             label={p.name}
-            sub={p.flagged ? 'Asked to double-check “free all week”' : p.contact ? `${p.contact.includes('@') ? 'Email' : 'Text'} · ${p.contact}` : 'No contact on file (in-app only)'} />
+            sub={p.flagged ? 'Confirm “free all week”' : p.contact || 'No contact'} />
         ))}
-        {!targets.length && <p className="text-sm text-ink/55">Everyone has responded. 🎉</p>}
+        {!targets.length && <p className="text-sm text-ink/55">Everyone has responded.</p>}
       </div>
       <Button block className="mt-4" onClick={send} disabled={!all.size}>Send {all.size ? `to ${all.size}` : ''}</Button>
     </Modal>

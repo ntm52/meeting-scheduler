@@ -13,9 +13,8 @@ import Outbox from './pages/Outbox'
 
 function Logo() {
   return (
-    <Link to="/" className="flex items-center gap-2 font-extrabold text-base sm:text-lg tracking-tight text-brand-800">
-      <img src="/favicon.svg" alt="" className="size-7" />
-      {APP_NAME}
+    <Link to="/" className="flex items-center">
+      <img src="/logo.png" alt={APP_NAME} className="h-8 w-auto" />
     </Link>
   )
 }
@@ -32,10 +31,9 @@ export default function App() {
       <div className="min-h-dvh flex flex-col">
         <header className="sticky top-0 z-40 bg-paper/90 backdrop-blur border-b border-black/5">
           <div className="max-w-5xl mx-auto px-4 h-14 flex items-center justify-between gap-2 whitespace-nowrap">
-            <Logo />
+            {loc.pathname === '/' ? <span /> : <Logo />}
             <nav className="flex items-center gap-0.5 sm:gap-1">
               <NavLink to="/me" className={nav}>My meetings</NavLink>
-              <NavLink to="/outbox" className={nav}>Outbox</NavLink>
               <NavLink to="/new" className={({ isActive }) => `hidden sm:inline-flex ${nav({ isActive })}`}>New</NavLink>
             </nav>
           </div>
@@ -53,7 +51,7 @@ export default function App() {
           </Routes>
         </main>
         <footer className="text-center text-xs text-ink/45 py-6">
-          {APP_NAME} · CS 330 Group 1 prototype · texts, emails & calendar sync are simulated (see Outbox)
+          {APP_NAME} · CS 330 Group 1 prototype
         </footer>
         <DemoPanel />
       </div>

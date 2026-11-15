@@ -34,17 +34,6 @@ export function Card({ children, className }: { children: ReactNode; className?:
   return <div className={cx('bg-white rounded-2xl border border-black/5 shadow-sm p-5 sm:p-6', className)}>{children}</div>
 }
 
-export function RoleBadge({ role, name }: { role: 'Organizer' | 'Respondent'; name?: string }) {
-  return (
-    <div className="flex items-center gap-2 mb-4">
-      <span className={cx('rounded-full border-2 px-3 py-0.5 text-sm font-semibold', role === 'Organizer' ? 'border-brand-700 text-brand-800' : 'border-ink/70 text-ink')}>
-        {role}
-      </span>
-      {name && <span className="text-sm text-ink/60">· {name}</span>}
-    </div>
-  )
-}
-
 export function Field({ label, hint, children }: { label: string; hint?: ReactNode; children: ReactNode }) {
   return (
     <label className="block">
@@ -80,16 +69,15 @@ export function Checkbox({ checked, onChange, label, sub }: { checked: boolean; 
 }
 
 const pillStyles: Record<string, string> = {
-  green: 'bg-brand-100 text-brand-800',
+  green: 'bg-go-100 text-go-800',
   amber: 'bg-amber-100 text-amber-800',
   gray: 'bg-ink/5 text-ink/60',
   red: 'bg-red-100 text-red-700',
   blue: 'bg-sky-100 text-sky-800',
 }
-export function Pill({ tone = 'gray', children, dot }: { tone?: keyof typeof pillStyles; children: ReactNode; dot?: boolean }) {
+export function Pill({ tone = 'gray', children }: { tone?: keyof typeof pillStyles; children: ReactNode }) {
   return (
-    <span className={cx('inline-flex items-center gap-1.5 rounded-full px-2.5 py-0.5 text-xs font-semibold whitespace-nowrap', pillStyles[tone])}>
-      {dot && <span className="size-1.5 rounded-full bg-current" />}
+    <span className={cx('inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-semibold whitespace-nowrap', pillStyles[tone])}>
       {children}
     </span>
   )
@@ -147,7 +135,7 @@ export function Progress({ value, max }: { value: number; max: number }) {
     <div className="h-4 rounded-full border-2 border-ink/80 bg-white overflow-hidden" role="progressbar" aria-valuenow={value} aria-valuemax={max}>
       <div
         className="h-full bg-brand-300 transition-all duration-700"
-        style={{ width: `${pct}%`, backgroundImage: 'repeating-linear-gradient(-60deg, transparent 0 8px, rgba(36,100,59,.55) 8px 10px)' }}
+        style={{ width: `${pct}%`, backgroundImage: 'repeating-linear-gradient(-60deg, transparent 0 8px, rgba(3,103,225,.55) 8px 10px)' }}
       />
     </div>
   )
@@ -155,7 +143,7 @@ export function Progress({ value, max }: { value: number; max: number }) {
 
 // ---- toasts (also used as the on-screen "notification lands here") --------
 
-type Toast = { id: number; title: string; body?: string; icon?: string }
+type Toast = { id: number; title: string; body?: string }
 const ToastCtx = createContext<(t: Omit<Toast, 'id'>) => void>(() => {})
 export const useToast = () => useContext(ToastCtx)
 
@@ -171,8 +159,7 @@ export function ToastProvider({ children }: { children: ReactNode }) {
       {children}
       <div className="fixed top-3 inset-x-0 z-[60] flex flex-col items-center gap-2 px-3 pointer-events-none">
         {items.map((t) => (
-          <div key={t.id} className="animate-in pointer-events-auto w-full max-w-sm rounded-2xl bg-white/95 backdrop-blur shadow-lg border border-black/5 px-4 py-3 flex gap-3">
-            <span className="text-xl leading-6">{t.icon || '🔔'}</span>
+          <div key={t.id} className="animate-in pointer-events-auto w-full max-w-sm rounded-2xl bg-white/95 backdrop-blur shadow-lg border border-black/5 px-4 py-3">
             <div className="min-w-0">
               <div className="font-semibold text-sm">{t.title}</div>
               {t.body && <div className="text-sm text-ink/70 break-words">{t.body}</div>}
